@@ -1,20 +1,3 @@
-あちゃ、またまた私のセリフがコードと一緒に `app.py` の中に入っちゃっていますね！😂
-
-Pythonのファイル（`.py`）は、**黒い枠の中のプログラムだけ**が書かれている状態にしないとエラーになってしまいます。
-
-今度こそバッチリ動かすために、次の手順で貼り付け直してみてください。
-
-### 🛠️ 正しい貼り付け手順
-
-1. `app.py` の中身を、一度すべて選択してデリートキーで完全に消し、真っ白（空っぽ）にしてください。
-2. 下の黒い枠の右上にある **「Copy」ボタン** をクリックします。
-3. 空っぽになった `app.py` に貼り付けて、保存（Ctrl + S）してください。
-
----
-
-### 📋 `app.py` に入れる中身（これだけをコピー）
-
-```python
 import streamlit as st
 import pandas as pd
 import unicodedata
@@ -207,5 +190,3 @@ if not res_df.empty:
     res_df = res_df.sort_values(by="予想最終ポイント", ascending=False)
 
 st.dataframe(res_df, use_container_width=True)
-
-```
