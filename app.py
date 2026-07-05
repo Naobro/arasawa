@@ -30,7 +30,7 @@ def safe_name(val):
 def safe_bool(val):
     return bool(val) if val is not None else False
 
-# アイテム単価（ゴーゴー、わっしょいの単価ポイントが必要な場合はここで変更してください）
+# 各アイテムの単価
 if "prices" not in st.session_state:
     st.session_state.prices = {
         "ゴーゴー": 0,      
@@ -45,13 +45,13 @@ if "prices" not in st.session_state:
 
 prices = st.session_state.prices
 
-# ご指定のあった「個数 ➔ ％」の完全な並び順
+# ご指定の「〇〇個数 ➔ 〇〇％」の正しい並び順
 COLUMN_ORDER = [
     "自分", "ライバー名", "現在ポイント",
     
-    "ゴーゴー総数", "ゴーゴー既投", "GOGO%",
-    "わっしょい総数", "わっしょい既投", "わっしょい%",
-    "ファイト総数", "ファイト既投", "ファイト%",
+    "ゴーゴー個数", "GOGO%",
+    "わっしょい個数", "わっしょい%",
+    "ファイト個数", "ファイト%",
     
     "メガ総数", "メガ既投",
     "ぽこ総数", "ぽこ既投",
@@ -67,9 +67,9 @@ def make_row(is_self, name):
         "ライバー名": name,
         "現在ポイント": 0,
         
-        "ゴーゴー総数": 0, "ゴーゴー既投": 0, "GOGO%": 0.0,
-        "わっしょい総数": 0, "わっしょい既投": 0, "わっしょい%": 0.0,
-        "ファイト総数": 0, "ファイト既投": 0, "ファイト%": 0.0,
+        "ゴーゴー個数": 0, "GOGO%": 0.0,
+        "わっしょい個数": 0, "わっしょい%": 0.0,
+        "ファイト個数": 0, "ファイト%": 0.0,
         
         "メガ総数": 0, "メガ既投": 0,
         "ぽこ総数": 0, "ぽこ既投": 0,
@@ -86,7 +86,7 @@ if "rival_df" not in st.session_state:
         try:
             loaded_df = pd.read_csv(CSV_FILE)
             base_row = make_row(True, "dummy")
-            # 不足している列（ゴーゴー総数など）があれば自動補完
+            # 不足している列があれば補完
             for col in base_row.keys():
                 if col not in loaded_df.columns:
                     loaded_df[col] = base_row[col]
@@ -113,18 +113,15 @@ edited = st.data_editor(
         "現在ポイント": st.column_config.NumberColumn("現在ポイント"),
         
         # ゴーゴー（個数 ➔ ％）
-        "ゴーゴー総数": st.column_config.NumberColumn("ゴーゴー総数"),
-        "ゴーゴー既投": st.column_config.NumberColumn("ゴーゴー既投"),
+        "ゴーゴー個数": st.column_config.NumberColumn("ゴーゴー個数"),
         "GOGO%": st.column_config.NumberColumn("GOGO%"),
         
         # わっしょい（個数 ➔ ％）
-        "わっしょい総数": st.column_config.NumberColumn("わっしょい総数"),
-        "わっしょい既投": st.column_config.NumberColumn("わっしょい既投"),
+        "わっしょい個数": st.column_config.NumberColumn("わっしょい個数"),
         "わっしょい%": st.column_config.NumberColumn("わっしょい%"),
         
         # ファイト（個数 ➔ ％）
-        "ファイト総数": st.column_config.NumberColumn("ファイト総数"),
-        "ファイト既投": st.column_config.NumberColumn("ファイト既投"),
+        "ファイト個数": st.column_config.NumberColumn("ファイト個数"),
         "ファイト%": st.column_config.NumberColumn("ファイト%"),
         
         # ナイト各種
@@ -149,8 +146,6 @@ if not edited.equals(st.session_state.rival_df):
     st.rerun()
 
 df = edited
-# 個数計算をする全アイテムのキー
-all_keys = ["ゴーゴー", "わっしょい", "ファイト", "メガ", "ぽこ", "ミニ", "プチ", "ベビ"]
 
 myself = None
 for _, row in df.iterrows():
@@ -160,6 +155,7 @@ for _, row in df.iterrows():
 if myself is None and len(df) > 0:
     myself = df.iloc[0]
 
+# 自分（荒沢）の残り個数の計算
 my_rem = {}
 my_predicted = 0
 if myself is not None:
@@ -169,9 +165,15 @@ if myself is not None:
         + safe_num(myself.get("わっしょい%"))
         + safe_num(myself.get("ファイト%"))
     )
-    for k in all_keys:
+    # 特有アイテム
+    my_rem["ゴーゴー"] = safe_num(myself.get("ゴーゴー個数"), True)
+    my_rem["わっしょい"] = safe_num(myself.get("わっしょい個数"), True)
+    my_rem["ファイト"] = safe_num(myself.get("ファイト個数"), True)
+    # ナイト
+    for k in ["メガ", "ぽこ", "ミニ", "プチ", "ベビ"]:
         my_rem[k] = max(0, safe_num(myself.get(f"{k}総数"), True) - safe_num(myself.get(f"{k}既投"), True))
-    my_item_pt = sum(my_rem[k] * prices[k] for k in all_keys)
+        
+    my_item_pt = sum(my_rem[k] * prices[k] for k in prices.keys())
     my_current = safe_num(myself.get("現在ポイント"), True)
     my_predicted = my_current + my_item_pt * (1 + my_bonus / 100)
 
@@ -185,10 +187,13 @@ for _, row in df.iterrows():
     )
 
     rem = {}
-    for k in all_keys:
+    rem["ゴーゴー"] = safe_num(row.get("ゴーゴー個数"), True)
+    rem["わっしょい"] = safe_num(row.get("わっしょい個数"), True)
+    rem["ファイト"] = safe_num(row.get("ファイト個数"), True)
+    for k in ["メガ", "ぽこ", "ミニ", "プチ", "ベビ"]:
         rem[k] = max(0, safe_num(row.get(f"{k}総数"), True) - safe_num(row.get(f"{k}既投"), True))
 
-    item_pt = sum(rem[k] * prices[k] for k in all_keys)
+    item_pt = sum(rem[k] * prices[k] for k in prices.keys())
     current = safe_num(row.get("現在ポイント"), True)
     
     item_bonus_pt = item_pt * (1 + bonus / 100)
