@@ -1,20 +1,3 @@
-エラーの原因は、`st.data_editor` の仕様にあります。
-
-`key="rival_editor"` を指定したとき、`st.session_state["rival_editor"]` に格納されるのは **DataFrame（データフレーム）ではなく、編集された差分データが入った辞書（dict型）** です。そのため、元の `save_csv` 関数内で `df.copy()` や `df.to_csv()` を呼び出した時点で「そんなメソッドはありません」というエラー（`AttributeError`）が発生していました。
-
-### 🛠️ 修正のポイント
-
-* エラーの原因になっていた `save_csv` 関数と、`st.data_editor` の `on_change=save_csv` を削除しました。
-* 代わりに、`st.data_editor` の戻り値（ここには常に最新の DataFrame が入ります）を直接チェックし、変更があった場合のみ CSV 保存とセッションの更新を行う安全な形に書き換えました。
-* 計算結果（③ 計算結果）が見やすくなるよう、予想最終ポイントが高い順に自動で並び替える処理も少し追加しています。
-
-すべて書き換えた全コードは以下の通りです。そのままコピーして差し替えてください。
-
----
-
-### 📋 修正済み全コード
-
-```python
 import streamlit as st
 import pandas as pd
 import unicodedata
@@ -80,7 +63,6 @@ if "rival_df" not in st.session_state:
         try:
             st.session_state.rival_df = pd.read_csv(CSV_FILE)
         except:
-            # CSVが破損しているなどのエラー対策
             st.session_state.rival_df = pd.DataFrame(
                 [make_row(True, "荒沢")] + [make_row(False, f"ライバル{i}") for i in range(1, 6)]
             )
@@ -91,7 +73,6 @@ if "rival_df" not in st.session_state:
 
 st.markdown("### ② 入力")
 
-# 戻り値の「edited」には常に最新の DataFrame が入ります
 edited = st.data_editor(
     st.session_state.rival_df,
     num_rows="dynamic",
@@ -118,11 +99,10 @@ edited = st.data_editor(
     }
 )
 
-# データの変更を検知して自動保存＆セッション同期
 if not edited.equals(st.session_state.rival_df):
     st.session_state.rival_df = edited
     edited.to_csv(CSV_FILE, index=False)
-    st.rerun()  # 画面と計算結果を即時更新
+    st.rerun()
 
 df = edited
 
@@ -158,10 +138,7 @@ for _, row in df.iterrows():
 st.markdown("### ③ 計算結果")
 res_df = pd.DataFrame(results)
 
-# 予想最終ポイントが高い順に並び替え
 if not res_df.empty:
     res_df = res_df.sort_values(by="予想最終ポイント", ascending=False)
 
 st.dataframe(res_df, use_container_width=True)
-
-```
