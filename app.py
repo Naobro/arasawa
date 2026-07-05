@@ -4,12 +4,9 @@ import unicodedata
 import os
 
 st.set_page_config(page_title="Pococha甲子園 予想最終ポイント計算", layout="wide")
-
 st.title("🏆 Pococha甲子園｜荒沢 予想最終ポイント計算ツール")
 
-# =========================
-# 数値安全化
-# =========================
+
 def safe_num(val, as_int=False):
     if val is None:
         return 0
@@ -35,9 +32,6 @@ def safe_bool(val):
     return bool(val) if val is not None else False
 
 
-# =========================
-# 単価
-# =========================
 if "prices" not in st.session_state:
     st.session_state.prices = {
         "メガ": 55555,
@@ -50,9 +44,6 @@ if "prices" not in st.session_state:
 prices = st.session_state.prices
 
 
-# =========================
-# 初期データ
-# =========================
 def make_row(is_self, name):
     return {
         "自分": is_self,
@@ -87,9 +78,6 @@ if "rival_df" not in st.session_state:
         )
 
 
-# =========================
-# 保存
-# =========================
 def save_csv():
     df = st.session_state.get("rival_editor")
     if df is None:
@@ -99,9 +87,6 @@ def save_csv():
     df.to_csv(CSV_FILE, index=False)
 
 
-# =========================
-# 編集
-# =========================
 st.markdown("### ② 入力")
 
 edited = st.data_editor(
@@ -118,16 +103,22 @@ edited = st.data_editor(
         "GOGO%": st.column_config.NumberColumn("GOGO%"),
         "わっしょい%": st.column_config.NumberColumn("わっしょい%"),
         "ファイト%": st.column_config.NumberColumn("ファイト%"),
+        "メガ総数": st.column_config.NumberColumn("メガ総数"),
+        "メガ既投": st.column_config.NumberColumn("メガ既投"),
+        "ぽこ総数": st.column_config.NumberColumn("ぽこ総数"),
+        "ぽこ既投": st.column_config.NumberColumn("ぽこ既投"),
+        "ミニ総数": st.column_config.NumberColumn("ミニ総数"),
+        "ミニ既投": st.column_config.NumberColumn("ミニ既投"),
+        "プチ総数": st.column_config.NumberColumn("プチ総数"),
+        "プチ既投": st.column_config.NumberColumn("プチ既投"),
+        "ベビ総数": st.column_config.NumberColumn("ベビ総数"),
+        "ベビ既投": st.column_config.NumberColumn("ベビ既投"),
     },
 )
-
 
 df = edited
 
 
-# =========================
-# 計算
-# =========================
 night_keys = ["メガ", "ぽこ", "ミニ", "プチ", "ベビ"]
 results = []
 
@@ -157,7 +148,4 @@ for _, row in df.iterrows():
         "予想": int(predicted),
     })
 
-
-res_df = pd.DataFrame(results)
-
-st.dataframe(res_df, use_container_width=True)
+st.dataframe(pd.DataFrame(results), use_container_width=True)
