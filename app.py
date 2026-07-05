@@ -76,12 +76,13 @@ if "rival_df" not in st.session_state:
 
 # ========== ④ 入力テーブル ==========
 st.markdown("### ② ライバー情報の入力")
+
 st.caption(
     "・「自分」は荒沢の行だけチェックしてください。\n"
-    "・ナイトは「総数」「既投」を入れると「残り」が自動計算されます。\n"
-    "・％欄は整数で入力してください（例：15）。\n"
+    "・ナイトは「総数」「既投」を入力すると「残り」が自動計算されます。\n"
+    "・％欄は小数も入力できます（例：48.12）。\n"
     "・ポイント・個数欄はカンマなしで入力してください（例：10000000）。\n"
-    "・入力後は必ずEnterかTabキーで確定してください。"
+    "・入力後は Enter または Tab キーで確定してください。"
 )
 
 edited = st.data_editor(
@@ -89,33 +90,115 @@ edited = st.data_editor(
     num_rows="dynamic",
     use_container_width=True,
     column_config={
+
         "自分": st.column_config.CheckboxColumn("自分（1人だけ）"),
-        "ライバー名": st.column_config.TextColumn("ライバー名"),
-        "現在ポイント": st.column_config.NumberColumn("現在ポイント", format="%d", min_value=0, step=1000),
-        "確定済みイベラス%": st.column_config.NumberColumn("確定済みイベラス%", format="%d", min_value=0, step=1),
-        "GOGO個数": st.column_config.NumberColumn("GOGO個数（メモ）", format="%d", min_value=0, step=1),
-        "GOGO%": st.column_config.NumberColumn("GOGO%", format="%d", min_value=0, step=1),
-        "わっしょい個数": st.column_config.NumberColumn("わっしょい個数（メモ）", format="%d", min_value=0, step=1),
-        "わっしょい%": st.column_config.NumberColumn("わっしょい%", format="%d", min_value=0, step=1),
-        "ファイト個数": st.column_config.NumberColumn("ファイト個数（メモ）", format="%d", min_value=0, step=1),
-        "ファイト%": st.column_config.NumberColumn("ファイト%", format="%d", min_value=0, step=1),
-        "メガ総数": st.column_config.NumberColumn("メガ総数", format="%d", min_value=0, step=1),
-        "メガ既投": st.column_config.NumberColumn("メガ既投", format="%d", min_value=0, step=1),
-        "ぽこ総数": st.column_config.NumberColumn("ぽこ総数", format="%d", min_value=0, step=1),
-        "ぽこ既投": st.column_config.NumberColumn("ぽこ既投", format="%d", min_value=0, step=1),
-        "ミニ総数": st.column_config.NumberColumn("ミニ総数", format="%d", min_value=0, step=1),
-        "ミニ既投": st.column_config.NumberColumn("ミニ既投", format="%d", min_value=0, step=1),
-        "プチ総数": st.column_config.NumberColumn("プチ総数", format="%d", min_value=0, step=1),
-        "プチ既投": st.column_config.NumberColumn("プチ既投", format="%d", min_value=0, step=1),
-        "ベビ総数": st.column_config.NumberColumn("ベビ総数", format="%d", min_value=0, step=1),
-        "ベビ既投": st.column_config.NumberColumn("ベビ既投", format="%d", min_value=0, step=1),
+
+        "ライバー名": st.column_config.TextColumn(
+            "ライバー名",
+            width="medium",
+        ),
+
+        "現在ポイント": st.column_config.NumberColumn(
+            "現在ポイント",
+            min_value=0,
+        ),
+
+        "確定済みイベラス%": st.column_config.NumberColumn(
+            "確定済みイベラス%",
+            min_value=0.0,
+            step=0.01,
+            format="%.2f",
+        ),
+
+        "GOGO個数": st.column_config.NumberColumn(
+            "GOGO個数（メモ）",
+            min_value=0,
+        ),
+
+        "GOGO%": st.column_config.NumberColumn(
+            "GOGO%",
+            min_value=0.0,
+            step=0.01,
+            format="%.2f",
+        ),
+
+        "わっしょい個数": st.column_config.NumberColumn(
+            "わっしょい個数（メモ）",
+            min_value=0,
+        ),
+
+        "わっしょい%": st.column_config.NumberColumn(
+            "わっしょい%",
+            min_value=0.0,
+            step=0.01,
+            format="%.2f",
+        ),
+
+        "ファイト個数": st.column_config.NumberColumn(
+            "ファイト個数（メモ）",
+            min_value=0,
+        ),
+
+        "ファイト%": st.column_config.NumberColumn(
+            "ファイト%",
+            min_value=0.0,
+            step=0.01,
+            format="%.2f",
+        ),
+
+        "メガ総数": st.column_config.NumberColumn(
+            "メガ総数",
+            min_value=0,
+        ),
+
+        "メガ既投": st.column_config.NumberColumn(
+            "メガ既投",
+            min_value=0,
+        ),
+
+        "ぽこ総数": st.column_config.NumberColumn(
+            "ぽこ総数",
+            min_value=0,
+        ),
+
+        "ぽこ既投": st.column_config.NumberColumn(
+            "ぽこ既投",
+            min_value=0,
+        ),
+
+        "ミニ総数": st.column_config.NumberColumn(
+            "ミニ総数",
+            min_value=0,
+        ),
+
+        "ミニ既投": st.column_config.NumberColumn(
+            "ミニ既投",
+            min_value=0,
+        ),
+
+        "プチ総数": st.column_config.NumberColumn(
+            "プチ総数",
+            min_value=0,
+        ),
+
+        "プチ既投": st.column_config.NumberColumn(
+            "プチ既投",
+            min_value=0,
+        ),
+
+        "ベビ総数": st.column_config.NumberColumn(
+            "ベビ総数",
+            min_value=0,
+        ),
+
+        "ベビ既投": st.column_config.NumberColumn(
+            "ベビ既投",
+            min_value=0,
+        ),
     },
     key="rival_editor",
 )
 
-# ★重要：編集結果を、テーブル専用のsession_stateへ必ず書き戻す。
-#   ナイト単価（prices）は完全に別のsession_state変数で管理しているため、
-#   単価を変更してもこちらのテーブルの状態には影響しない。
 st.session_state.rival_df = edited
 
 # ========== ⑤ 計算 ==========
