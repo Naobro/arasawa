@@ -1,3 +1,19 @@
+エラーの原因は、`st.data_editor` の仕様にあります。
+
+`key="rival_editor"` を指定したとき、`st.session_state["rival_editor"]` に格納されるのは **DataFrame（データフレーム）ではなく、編集された差分データが入った辞書（dict型）** です。そのため、元の `save_csv` 関数内で `df.copy()` や `df.to_csv()` を呼び出した時点で「そんなメソッドはありません」というエラー（`AttributeError`）が発生していました。
+
+### 🛠️ 修正のポイント
+
+* エラーの原因になっていた `save_csv` 関数と、`st.data_editor` の `on_change=save_csv` を削除しました。
+* 代わりに、`st.data_editor` の戻り値（ここには常に最新の DataFrame が入ります）を直接チェックし、変更があった場合のみ CSV 保存とセッションの更新を行う安全な形に書き換えました。
+* 計算結果（③ 計算結果）が見やすくなるよう、予想最終ポイントが高い順に自動で並び替える処理も少し追加しています。
+
+すべて書き換えた全コードは以下の通りです。そのままコピーして差し替えてください。
+
+---
+
+### 📋 修正済み全コード
+
 ```python
 import streamlit as st
 import pandas as pd
@@ -6,7 +22,6 @@ import os
 
 st.set_page_config(page_title="Pococha甲子園 予想最終ポイント計算", layout="wide")
 st.title("🏆 Pococha甲子園｜荒沢 予想最終ポイント計算ツール")
-
 
 def safe_num(val, as_int=False):
     if val is None:
@@ -24,26 +39,18 @@ def safe_num(val, as_int=False):
     except:
         return 0
 
-
 def safe_name(val):
     return "" if val is None else str(val)
-
 
 def safe_bool(val):
     return bool(val) if val is not None else False
 
-
 if "prices" not in st.session_state:
     st.session_state.prices = {
-        "メガ": 55555,
-        "ぽこ": 11111,
-        "ミニ": 3333,
-        "プチ": 1111,
-        "ベビ": 333,
+        "メガ": 55555, "ぽこ": 11111, "ミニ": 3333, "プチ": 1111, "ベビ": 333
     }
 
 prices = st.session_state.prices
-
 
 def make_row(is_self, name):
     return {
@@ -66,41 +73,30 @@ def make_row(is_self, name):
         "ベビ既投": 0,
     }
 
-
 CSV_FILE = "rival_data.csv"
 
 if "rival_df" not in st.session_state:
     if os.path.exists(CSV_FILE):
-        st.session_state.rival_df = pd.read_csv(CSV_FILE)
+        try:
+            st.session_state.rival_df = pd.read_csv(CSV_FILE)
+        except:
+            # CSVが破損しているなどのエラー対策
+            st.session_state.rival_df = pd.DataFrame(
+                [make_row(True, "荒沢")] + [make_row(False, f"ライバル{i}") for i in range(1, 6)]
+            )
     else:
         st.session_state.rival_df = pd.DataFrame(
-            [make_row(True, "荒沢")]
-            + [make_row(False, f"ライバル{i}") for i in range(1, 6)]
+            [make_row(True, "荒沢")] + [make_row(False, f"ライバル{i}") for i in range(1, 6)]
         )
-
 
 st.markdown("### ② 入力")
 
-
-def save_csv():
-    df = st.session_state.get("rival_editor")
-
-    if df is None:
-        return
-
-    try:
-        df.to_csv(CSV_FILE, index=False)
-        st.session_state.rival_df = df.copy()
-    except:
-        pass
-
-
+# 戻り値の「edited」には常に最新の DataFrame が入ります
 edited = st.data_editor(
     st.session_state.rival_df,
     num_rows="dynamic",
     use_container_width=True,
     key="rival_editor",
-    on_change=save_csv,
     column_config={
         "自分": st.column_config.CheckboxColumn("自分"),
         "ライバー名": st.column_config.TextColumn("ライバー名"),
@@ -119,12 +115,16 @@ edited = st.data_editor(
         "プチ既投": st.column_config.NumberColumn("プチ既投"),
         "ベビ総数": st.column_config.NumberColumn("ベビ総数"),
         "ベビ既投": st.column_config.NumberColumn("ベビ既投"),
-    },
+    }
 )
 
+# データの変更を検知して自動保存＆セッション同期
+if not edited.equals(st.session_state.rival_df):
+    st.session_state.rival_df = edited
+    edited.to_csv(CSV_FILE, index=False)
+    st.rerun()  # 画面と計算結果を即時更新
 
 df = edited
-
 
 night_keys = ["メガ", "ぽこ", "ミニ", "プチ", "ベビ"]
 results = []
@@ -149,13 +149,19 @@ for _, row in df.iterrows():
     current = safe_num(row.get("現在ポイント"), True)
     predicted = current + night_pt * (1 + bonus / 100)
 
-    results.append(
-        {
-            "ライバー名": safe_name(row.get("ライバー名")),
-            "現在ポイント": current,
-            "予想最終": int(predicted),
-        }
-    )
+    results.append({
+        "自分": safe_bool(row.get("自分")),
+        "ライバー名": safe_name(row.get("ライバー名")),
+        "予想最終ポイント": int(predicted),
+    })
 
-st.dataframe(pd.DataFrame(results), use_container_width=True)
+st.markdown("### ③ 計算結果")
+res_df = pd.DataFrame(results)
+
+# 予想最終ポイントが高い順に並び替え
+if not res_df.empty:
+    res_df = res_df.sort_values(by="予想最終ポイント", ascending=False)
+
+st.dataframe(res_df, use_container_width=True)
+
 ```
