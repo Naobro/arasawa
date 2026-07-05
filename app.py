@@ -44,30 +44,33 @@ if "prices" not in st.session_state:
 
 prices = st.session_state.prices
 
-# ご希望の「個数 ➔ ポイント（％）」の順に合わせて初期データの並びを変更
+# 表示させたい絶対的な列の順番を定義
+COLUMN_ORDER = [
+    "自分", "ライバー名", "現在ポイント",
+    "ゴーゴー総数", "ゴーゴー既投", "GOGO%",
+    "わっしょい総数", "わっしょい既投", "わっしょい%",
+    "ファイト総数", "ファイト既投", "ファイト%",
+    "メガ総数", "メガ既投",
+    "ぽこ総数", "ぽこ既投",
+    "ミニ総数", "ミニ既投",
+    "プチ総数", "プチ既投",
+    "ベビ総数", "ベビ既投",
+    "確定済みイベラス%"
+]
+
 def make_row(is_self, name):
     return {
         "自分": is_self,
         "ライバー名": name,
         "現在ポイント": 0,
-        
-        # --- ゴーゴー ---
         "ゴーゴー総数": 0, "ゴーゴー既投": 0, "GOGO%": 0.0,
-        
-        # --- わっしょい ---
         "わっしょい総数": 0, "わっしょい既投": 0, "わっしょい%": 0.0,
-        
-        # --- ファイト ---
         "ファイト総数": 0, "ファイト既投": 0, "ファイト%": 0.0,
-        
-        # --- ナイト各種 ---
         "メガ総数": 0, "メガ既投": 0,
         "ぽこ総数": 0, "ぽこ既投": 0,
         "ミニ総数": 0, "ミニ既投": 0,
         "プチ総数": 0, "プチ既投": 0,
         "ベビ総数": 0, "ベビ既投": 0,
-        
-        # --- イベラス確定分 ---
         "確定済みイベラス%": 0.0,
     }
 
@@ -78,27 +81,27 @@ if "rival_df" not in st.session_state:
         try:
             loaded_df = pd.read_csv(CSV_FILE)
             base_row = make_row(True, "dummy")
-            # 新しい列順で並び替えて保持
+            # 足りない列があれば補完
             for col in base_row.keys():
                 if col not in loaded_df.columns:
                     loaded_df[col] = base_row[col]
-            # 列の順番を強制的に並び替え
-            loaded_df = loaded_df[list(base_row.keys())]
+            # ➔ ➔ ➔ 【最重要】ここで強制的に「個数 ➔ ポイント」の順番に並び替える ➔ ➔ ➔
+            loaded_df = loaded_df[COLUMN_ORDER]
             st.session_state.rival_df = loaded_df
         except:
             st.session_state.rival_df = pd.DataFrame(
                 [make_row(True, "荒沢")] + [make_row(False, f"ライバル{i}") for i in range(1, 6)]
-            )
+            )[COLUMN_ORDER]
     else:
         st.session_state.rival_df = pd.DataFrame(
             [make_row(True, "荒沢")] + [make_row(False, f"ライバル{i}") for i in range(1, 6)]
-        )
+        )[COLUMN_ORDER]
 
 st.markdown("### ② 入力")
 
-# 表示する順番を「個数 ➔ ポイント（％）」に完全統一
+# 画面表示用の設定。並び順が固定されるようにCOLUMN_ORDERに沿って適用
 edited = st.data_editor(
-    st.session_state.rival_df,
+    st.session_state.rival_df[COLUMN_ORDER],  # 常に正しい列順でエディタに渡す
     num_rows="dynamic",
     use_container_width=True,
     key="rival_editor",
@@ -122,7 +125,7 @@ edited = st.data_editor(
         "ファイト既投": st.column_config.NumberColumn("ファイト既投"),
         "ファイト%": st.column_config.NumberColumn("ファイト%"),
         
-        # ナイトアイテム
+        # ナイト
         "メガ総数": st.column_config.NumberColumn("メガ総数"),
         "メガ既投": st.column_config.NumberColumn("メガ既投"),
         "ぽこ総数": st.column_config.NumberColumn("ぽこ総数"),
@@ -134,14 +137,13 @@ edited = st.data_editor(
         "ベビ総数": st.column_config.NumberColumn("ベビ総数"),
         "ベビ既投": st.column_config.NumberColumn("ベビ既投"),
         
-        # 確定%
         "確定済みイベラス%": st.column_config.NumberColumn("確定%"),
     }
 )
 
 if not edited.equals(st.session_state.rival_df):
-    st.session_state.rival_df = edited
-    edited.to_csv(CSV_FILE, index=False)
+    st.session_state.rival_df = edited[COLUMN_ORDER]
+    edited[COLUMN_ORDER].to_csv(CSV_FILE, index=False)
     st.rerun()
 
 df = edited
