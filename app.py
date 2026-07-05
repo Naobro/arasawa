@@ -7,7 +7,6 @@ st.set_page_config(page_title="Pococha甲子園 予想最終ポイント計算",
 
 st.title("🏆 Pococha甲子園｜荒沢 予想最終ポイント計算ツール")
 
-
 # =========================
 # 数値安全化
 # =========================
@@ -40,7 +39,13 @@ def safe_bool(val):
 # 単価
 # =========================
 if "prices" not in st.session_state:
-    st.session_state.prices = {"メガ": 55555, "ぽこ": 11111, "ミニ": 3333, "プチ": 1111, "ベビ": 333}
+    st.session_state.prices = {
+        "メガ": 55555,
+        "ぽこ": 11111,
+        "ミニ": 3333,
+        "プチ": 1111,
+        "ベビ": 333
+    }
 
 prices = st.session_state.prices
 
@@ -77,20 +82,27 @@ if "rival_df" not in st.session_state:
         st.session_state.rival_df = pd.read_csv(CSV_FILE)
     else:
         st.session_state.rival_df = pd.DataFrame(
-            [make_row(True, "荒沢")] + [make_row(False, f"ライバル{i}") for i in range(1, 6)]
+            [make_row(True, "荒沢")] +
+            [make_row(False, f"ライバル{i}") for i in range(1, 6)]
         )
 
 
 # =========================
-# 重要：編集データは session_stateに入れない
+# 保存
 # =========================
-st.markdown("### ② 入力")
-
 def save_csv():
-    df = st.session_state["rival_editor"]
-    st.session_state.rival_df = df.copy()
+    df = st.session_state.get("rival_editor")
+    if df is None:
+        return
+    df = df.copy()
+    st.session_state.rival_df = df
     df.to_csv(CSV_FILE, index=False)
 
+
+# =========================
+# 編集
+# =========================
+st.markdown("### ② 入力")
 
 edited = st.data_editor(
     st.session_state.rival_df,
@@ -110,9 +122,6 @@ edited = st.data_editor(
 )
 
 
-# =========================
-# ★ここが重要（これでエラー消える）
-# =========================
 df = edited
 
 
@@ -143,12 +152,10 @@ for _, row in df.iterrows():
     current = safe_num(row.get("現在ポイント"), True)
     predicted = current + night_pt * (1 + bonus / 100)
 
-    results.append(
-        {
-            "ライバー名": safe_name(row.get("ライバー名")),
-            "予想": int(predicted),
-        }
-    )
+    results.append({
+        "ライバー名": safe_name(row.get("ライバー名")),
+        "予想": int(predicted),
+    })
 
 
 res_df = pd.DataFrame(results)
