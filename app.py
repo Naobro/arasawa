@@ -1,33 +1,66 @@
 import streamlit as st
 import pandas as pd
+import unicodedata
 
 st.set_page_config(page_title="Pococha甲子園 予想最終ポイント計算", layout="wide")
 st.title("🏆 Pococha甲子園｜荒沢 予想最終ポイント計算ツール")
 
-# ========== ① ナイト単価設定 ==========
+# ========== ① 安全な数値変換 ==========
+def safe_num(val, as_int=False):
+    """None / NaN / 空文字 / 全角 / %付き / カンマ付き などを安全に数値へ変換"""
+    if val is None:
+        return 0
+    s = str(val).strip()
+    if s == "" or s.lower() == "nan":
+        return 0
+    s = unicodedata.normalize("NFKC", s)  # 全角→半角
+    s = s.replace(",", "").replace("%", "").replace("％", "")
+    try:
+        v = float(s)
+        if pd.isna(v):
+            return 0
+        return int(round(v)) if as_int else v
+    except (TypeError, ValueError):
+        return 0
+
+def safe_name(val):
+    return "" if (val is None or (isinstance(val, float) and pd.isna(val))) else str(val)
+
+def safe_bool(val):
+    return bool(val) if (val is not None and not (isinstance(val, float) and pd.isna(val))) else False
+
+# ========== ② ナイト単価（フォームでまとめ、テーブルとは別のsession_stateで独立管理） ==========
 st.markdown("### ① ナイト1個あたりのポイント単価")
 st.warning(
     "⚠️ 以下は仮の初期値です。実際の枠でナイトをタップした際に表示される"
     "「このアイテムで◯pt応援」の数値に必ず書き換えてください。"
 )
 
-c1, c2, c3, c4, c5 = st.columns(5)
-pt_mega  = c1.number_input("メガナイト単価",  value=55555, step=100)
-pt_poko  = c2.number_input("ぽこナイト単価",  value=11111, step=100)
-pt_mini  = c3.number_input("ミニナイト単価",  value=3333,  step=100)
-pt_puchi = c4.number_input("プチナイト単価",  value=1111,  step=100)
-pt_baby  = c5.number_input("ベビナイト単価",  value=333,   step=100)
+if "prices" not in st.session_state:
+    st.session_state.prices = {"メガ": 55555, "ぽこ": 11111, "ミニ": 3333, "プチ": 1111, "ベビ": 333}
 
-prices = {"メガ": pt_mega, "ぽこ": pt_poko, "ミニ": pt_mini, "プチ": pt_puchi, "ベビ": pt_baby}
+# ★st.form でまとめることで、「送信」を押すまでは再実行（rerun）が発生しない。
+#   これにより、単価をいじっている最中に下のテーブルの編集内容が消える事故を防ぐ。
+with st.form("price_form"):
+    c1, c2, c3, c4, c5 = st.columns(5)
+    p_mega  = c1.number_input("メガ単価",  value=st.session_state.prices["メガ"],  step=100)
+    p_poko  = c2.number_input("ぽこ単価",  value=st.session_state.prices["ぽこ"],  step=100)
+    p_mini  = c3.number_input("ミニ単価",  value=st.session_state.prices["ミニ"],  step=100)
+    p_puchi = c4.number_input("プチ単価",  value=st.session_state.prices["プチ"], step=100)
+    p_baby  = c5.number_input("ベビ単価",  value=st.session_state.prices["ベビ"],  step=100)
+    if st.form_submit_button("単価を更新"):
+        st.session_state.prices = {"メガ": p_mega, "ぽこ": p_poko, "ミニ": p_mini, "プチ": p_puchi, "ベビ": p_baby}
 
-# ========== ② デフォルトデータ（荒沢＋ライバル5人） ==========
+prices = st.session_state.prices
+
+# ========== ③ デフォルトデータ（荒沢＋ライバル5人） ==========
 def make_row(is_self, name):
     return {
         "自分": is_self, "ライバー名": name,
-        "現在ポイント": 0, "確定済みイベラス%": 0.0,
-        "GOGO個数": 0, "GOGO%": 0.0,
-        "わっしょい個数": 0, "わっしょい%": 0.0,
-        "ファイト個数": 0, "ファイト%": 0.0,
+        "現在ポイント": 0, "確定済みイベラス%": 0,
+        "GOGO個数": 0, "GOGO%": 0,
+        "わっしょい個数": 0, "わっしょい%": 0,
+        "ファイト個数": 0, "ファイト%": 0,
         "メガ総数": 0, "メガ既投": 0,
         "ぽこ総数": 0, "ぽこ既投": 0,
         "ミニ総数": 0, "ミニ既投": 0,
@@ -35,53 +68,55 @@ def make_row(is_self, name):
         "ベビ総数": 0, "ベビ既投": 0,
     }
 
-if "df" not in st.session_state:
+if "rival_df" not in st.session_state:
     _rows = [make_row(True, "荒沢")]
     for i in range(1, 6):
         _rows.append(make_row(False, f"ライバル{i}"))
-    st.session_state.df = pd.DataFrame(_rows)
-
-# ========== ③ 安全な数値変換（TypeError対策の本体） ==========
-def safe_num(val, as_int=False):
-    """None / NaN / 空文字 / 不正な文字列などを安全に 0 として扱う"""
-    try:
-        v = float(val)
-        if pd.isna(v):
-            return 0
-        return int(v) if as_int else v
-    except (TypeError, ValueError):
-        return 0
-
-def safe_name(val):
-    return "" if pd.isna(val) else str(val)
-
-def safe_bool(val):
-    return bool(val) if pd.notna(val) else False
+    st.session_state.rival_df = pd.DataFrame(_rows)
 
 # ========== ④ 入力テーブル ==========
-st.markdown("### ② ライバー情報の入力（デフォルトで荒沢＋ライバル5人）")
+st.markdown("### ② ライバー情報の入力")
 st.caption(
-    "・「自分」は荒沢の行だけチェックしてください（複数チェックしないよう注意）。\n"
+    "・「自分」は荒沢の行だけチェックしてください。\n"
     "・ナイトは「総数」「既投」を入れると「残り」が自動計算されます。\n"
-    "・GOGO/わっしょい/ファイトの「%」はアプリのバーストランキング表示値を入力してください。\n"
-    "・表の左下「＋」で行を追加できます。空欄のまま計算してもエラーは出ません。"
+    "・％欄は整数で入力してください（例：15）。\n"
+    "・ポイント・個数欄はカンマなしで入力してください（例：10000000）。\n"
+    "・入力後は必ずEnterかTabキーで確定してください。"
 )
 
 edited = st.data_editor(
-    st.session_state.df,
+    st.session_state.rival_df,
     num_rows="dynamic",
     use_container_width=True,
     column_config={
         "自分": st.column_config.CheckboxColumn("自分（1人だけ）"),
-        "現在ポイント": st.column_config.NumberColumn("現在ポイント", format="localized", min_value=0),
-        "確定済みイベラス%": st.column_config.NumberColumn("確定済みイベラス%", format="%.2f", min_value=0.0, step=0.25),
-        "GOGO%": st.column_config.NumberColumn("GOGO%", format="%.2f", min_value=0.0, step=0.25),
-        "わっしょい%": st.column_config.NumberColumn("わっしょい%", format="%.2f", min_value=0.0, step=0.25),
-        "ファイト%": st.column_config.NumberColumn("ファイト%", format="%.2f", min_value=0.0, step=0.25),
+        "ライバー名": st.column_config.TextColumn("ライバー名"),
+        "現在ポイント": st.column_config.NumberColumn("現在ポイント", format="%d", min_value=0, step=1000),
+        "確定済みイベラス%": st.column_config.NumberColumn("確定済みイベラス%", format="%d", min_value=0, step=1),
+        "GOGO個数": st.column_config.NumberColumn("GOGO個数（メモ）", format="%d", min_value=0, step=1),
+        "GOGO%": st.column_config.NumberColumn("GOGO%", format="%d", min_value=0, step=1),
+        "わっしょい個数": st.column_config.NumberColumn("わっしょい個数（メモ）", format="%d", min_value=0, step=1),
+        "わっしょい%": st.column_config.NumberColumn("わっしょい%", format="%d", min_value=0, step=1),
+        "ファイト個数": st.column_config.NumberColumn("ファイト個数（メモ）", format="%d", min_value=0, step=1),
+        "ファイト%": st.column_config.NumberColumn("ファイト%", format="%d", min_value=0, step=1),
+        "メガ総数": st.column_config.NumberColumn("メガ総数", format="%d", min_value=0, step=1),
+        "メガ既投": st.column_config.NumberColumn("メガ既投", format="%d", min_value=0, step=1),
+        "ぽこ総数": st.column_config.NumberColumn("ぽこ総数", format="%d", min_value=0, step=1),
+        "ぽこ既投": st.column_config.NumberColumn("ぽこ既投", format="%d", min_value=0, step=1),
+        "ミニ総数": st.column_config.NumberColumn("ミニ総数", format="%d", min_value=0, step=1),
+        "ミニ既投": st.column_config.NumberColumn("ミニ既投", format="%d", min_value=0, step=1),
+        "プチ総数": st.column_config.NumberColumn("プチ総数", format="%d", min_value=0, step=1),
+        "プチ既投": st.column_config.NumberColumn("プチ既投", format="%d", min_value=0, step=1),
+        "ベビ総数": st.column_config.NumberColumn("ベビ総数", format="%d", min_value=0, step=1),
+        "ベビ既投": st.column_config.NumberColumn("ベビ既投", format="%d", min_value=0, step=1),
     },
-    key="editor",
+    key="rival_editor",
 )
-st.session_state.df = edited
+
+# ★重要：編集結果を、テーブル専用のsession_stateへ必ず書き戻す。
+#   ナイト単価（prices）は完全に別のsession_state変数で管理しているため、
+#   単価を変更してもこちらのテーブルの状態には影響しない。
+st.session_state.rival_df = edited
 
 # ========== ⑤ 計算 ==========
 st.markdown("### ③ 計算結果（予想最終ポイント）")
@@ -144,7 +179,6 @@ else:
     res_df["自分との差分"] = None
     st.info("「自分」にチェックが入っている行がありません。荒沢の行にチェックを入れてください。")
 
-# ---- カンマ表示（確実に効く方法：文字列に変換してから表示）----
 display_df = res_df.copy()
 for col in ["現在ポイント", "残りナイト素点", "予想最終ポイント", "自分との差分"]:
     display_df[col] = display_df[col].apply(
@@ -153,7 +187,7 @@ for col in ["現在ポイント", "残りナイト素点", "予想最終ポイ�
 
 st.dataframe(display_df, use_container_width=True)
 
-# ========== ⑥ 逆算ツール（1位に追いつくには） ==========
+# ========== ⑥ 逆算ツール ==========
 if len(self_rows) > 0 and gap is not None and gap > 0:
     st.markdown("### ④ 逆算ツール（1位に追いつくにはあと何が必要か）")
 
@@ -163,8 +197,7 @@ if len(self_rows) > 0 and gap is not None and gap > 0:
 
     target = st.number_input(
         "目標ポイント（デフォルトは現在の1位の予想ポイント）",
-        value=top_point,
-        step=10000,
+        value=top_point, step=10000, key="target",
     )
 
     col_a, col_b = st.columns(2)
