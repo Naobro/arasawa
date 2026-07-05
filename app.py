@@ -6,7 +6,6 @@ import os
 st.set_page_config(page_title="Pococha甲子園 予想最終ポイント計算", layout="wide")
 st.title("🏆 Pococha甲子園｜荒沢 予想最終ポイント計算ツール")
 
-
 def safe_num(val, as_int=False):
     if val is None:
         return 0
@@ -23,26 +22,18 @@ def safe_num(val, as_int=False):
     except:
         return 0
 
-
 def safe_name(val):
     return "" if val is None else str(val)
-
 
 def safe_bool(val):
     return bool(val) if val is not None else False
 
-
 if "prices" not in st.session_state:
     st.session_state.prices = {
-        "メガ": 55555,
-        "ぽこ": 11111,
-        "ミニ": 3333,
-        "プチ": 1111,
-        "ベビ": 333
+        "メガ": 55555, "ぽこ": 11111, "ミニ": 3333, "プチ": 1111, "ベビ": 333
     }
 
 prices = st.session_state.prices
-
 
 def make_row(is_self, name):
     return {
@@ -65,7 +56,6 @@ def make_row(is_self, name):
         "ベビ既投": 0,
     }
 
-
 CSV_FILE = "rival_data.csv"
 
 if "rival_df" not in st.session_state:
@@ -73,21 +63,15 @@ if "rival_df" not in st.session_state:
         st.session_state.rival_df = pd.read_csv(CSV_FILE)
     else:
         st.session_state.rival_df = pd.DataFrame(
-            [make_row(True, "荒沢")] +
-            [make_row(False, f"ライバル{i}") for i in range(1, 6)]
+            [make_row(True, "荒沢")] + [make_row(False, f"ライバル{i}") for i in range(1, 6)]
         )
 
+st.markdown("### ② 入力")
 
 def save_csv():
-    df = st.session_state.get("rival_editor")
-    if df is None:
-        return
-    df = df.copy()
-    st.session_state.rival_df = df
+    df = st.session_state["rival_editor"]
+    st.session_state.rival_df = df.copy()
     df.to_csv(CSV_FILE, index=False)
-
-
-st.markdown("### ② 入力")
 
 edited = st.data_editor(
     st.session_state.rival_df,
@@ -113,11 +97,10 @@ edited = st.data_editor(
         "プチ既投": st.column_config.NumberColumn("プチ既投"),
         "ベビ総数": st.column_config.NumberColumn("ベビ総数"),
         "ベビ既投": st.column_config.NumberColumn("ベビ既投"),
-    },
+    }
 )
 
 df = edited
-
 
 night_keys = ["メガ", "ぽこ", "ミニ", "プチ", "ベビ"]
 results = []
@@ -145,7 +128,7 @@ for _, row in df.iterrows():
 
     results.append({
         "ライバー名": safe_name(row.get("ライバー名")),
-        "予想": int(predicted),
+        "予想最終ポイント": int(predicted),
     })
 
 st.dataframe(pd.DataFrame(results), use_container_width=True)
