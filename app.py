@@ -12,7 +12,7 @@ st.warning(
 )
 
 c1, c2, c3, c4, c5 = st.columns(5)
-pt_mega  = c1.number_input("メガナイト単価",  value=33333, step=100)
+pt_mega  = c1.number_input("メガナイト単価",  value=55555, step=100)
 pt_poko  = c2.number_input("ぽこナイト単価",  value=11111, step=100)
 pt_mini  = c3.number_input("ミニナイト単価",  value=3333,  step=100)
 pt_puchi = c4.number_input("プチナイト単価",  value=1111,  step=100)
