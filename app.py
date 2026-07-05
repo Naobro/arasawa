@@ -1,5 +1,3 @@
-
-
 import streamlit as st
 import pandas as pd
 import unicodedata
@@ -45,20 +43,20 @@ if "prices" not in st.session_state:
 
 prices = st.session_state.prices
 
-# 〇〇個数 ➔ 〇〇％ の絶対的な並び順
+# ➔ ➔ ➔ ご指定通りの絶対的な並び順 ➔ ➔ ➔
 COLUMN_ORDER = [
     "自分", "ライバー名", "現在ポイント",
-    
-    "ゴーゴー個数", "GOGO%",
-    "わっしょい個数", "わっしょい%",
-    "ファイト個数", "ファイト%",
+    "確定済みイベラス%",
     
     "メガ総数", "メガ既投",
     "ぽこ総数", "ぽこ既投",
     "ミニ総数", "ミニ既投",
     "プチ総数", "プチ既投",
     "ベビ総数", "ベビ既投",
-    "確定済みイベラス%"
+    
+    "ゴーゴー個数", "GOGO%",
+    "わっしょい個数", "わっしょい%",
+    "ファイト個数", "ファイト%"
 ]
 
 def make_row(is_self, name):
@@ -66,31 +64,28 @@ def make_row(is_self, name):
         "自分": is_self,
         "ライバー名": name,
         "現在ポイント": 0,
-        
-        "ゴーゴー個数": 0, "GOGO%": 0.0,
-        "わっしょい個数": 0, "わっしょい%": 0.0,
-        "ファイト個数": 0, "ファイト%": 0.0,
+        "確定済みイベラス%": 0.0,
         
         "メガ総数": 0, "メガ既投": 0,
         "ぽこ総数": 0, "ぽこ既投": 0,
         "ミニ総数": 0, "ミニ既投": 0,
         "プチ総数": 0, "プチ既投": 0,
         "ベビ総数": 0, "ベビ既投": 0,
-        "確定済みイベラス%": 0.0,
+        
+        "ゴーゴー個数": 0, "GOGO%": 0.0,
+        "わっしょい個数": 0, "わっしょい%": 0.0,
+        "ファイト個数": 0, "ファイト%": 0.0,
     }
 
 CSV_FILE = "rival_data.csv"
 
-# --- 【エラー原因対策】古いCSVデータから新構成のクリーンなデータに強制変換する処理 ---
 if "rival_df" not in st.session_state:
     need_reset = True
     if os.path.exists(CSV_FILE):
         try:
             loaded_df = pd.read_csv(CSV_FILE)
-            # 既存の行データを新しい形式に載せ替える
             new_rows = []
             for i, row in loaded_df.iterrows():
-                # 最初の人か「自分」にチェックが入ってたら荒沢、それ以外は既存の名前を引き継ぐ
                 is_me = safe_bool(row.get("自分")) or (i == 0 and "荒沢" in safe_name(row.get("ライバー名")))
                 name = safe_name(row.get("ライバー名")) if safe_name(row.get("ライバー名")) else (f"荒沢" if is_me else f"ライバル{i}")
                 
@@ -98,19 +93,18 @@ if "rival_df" not in st.session_state:
                 base["現在ポイント"] = safe_num(row.get("現在ポイント"), True)
                 base["確定済みイベラス%"] = safe_num(row.get("確定済みイベラス%")) or safe_num(row.get("確定%"))
                 
-                # 古い列名と新しい列名を紐づけて値を救出
-                base["GOGO%"] = safe_num(row.get("GOGO%"))
-                base["わっしょい%"] = safe_num(row.get("わっしょい%"))
-                base["ファイト%"] = safe_num(row.get("ファイト%"))
-                
-                # 個数系
-                base["ゴーゴー個数"] = safe_num(row.get("ゴーゴー個数")) or safe_num(row.get("ゴーゴー総数"))
-                base["わっしょい個数"] = safe_num(row.get("わっしょい個数")) or safe_num(row.get("わっしょい総数"))
-                base["ファイト個数"] = safe_num(row.get("ファイト個数")) or safe_num(row.get("ファイト総数"))
-                
                 for k in ["メガ", "ぽこ", "ミニ", "プチ", "ベビ"]:
                     base[f"{k}総数"] = safe_num(row.get(f"{k}総数"), True)
                     base[f"{k}既投"] = safe_num(row.get(f"{k}既投"), True)
+                
+                base["ゴーゴー個数"] = safe_num(row.get("ゴーゴー個数")) or safe_num(row.get("ゴーゴー総数"))
+                base["GOGO%"] = safe_num(row.get("GOGO%"))
+                
+                base["わっしょい個数"] = safe_num(row.get("わっしょい個数")) or safe_num(row.get("わっしょい総数"))
+                base["わっしょい%"] = safe_num(row.get("わっしょい%"))
+                
+                base["ファイト個数"] = safe_num(row.get("ファイト個数")) or safe_num(row.get("ファイト総数"))
+                base["ファイト%"] = safe_num(row.get("ファイト%"))
                 
                 new_rows.append(base)
                 
@@ -128,7 +122,6 @@ if "rival_df" not in st.session_state:
 
 st.markdown("### ② 入力")
 
-# 必ず最新のCOLUMN_ORDERのみを持つDataFrameをエディタに渡す
 current_df = st.session_state.rival_df.copy()
 for col in COLUMN_ORDER:
     if col not in current_df.columns:
@@ -143,18 +136,7 @@ edited = st.data_editor(
         "自分": st.column_config.CheckboxColumn("自分"),
         "ライバー名": st.column_config.TextColumn("ライバー名"),
         "現在ポイント": st.column_config.NumberColumn("現在ポイント"),
-        
-        # ゴーゴー（個数 ➔ ％）
-        "ゴーゴー個数": st.column_config.NumberColumn("ゴーゴー個数"),
-        "GOGO%": st.column_config.NumberColumn("GOGO%"),
-        
-        # わっしょい（個数 ➔ ％）
-        "わっしょい個数": st.column_config.NumberColumn("わっしょい個数"),
-        "わっしょい%": st.column_config.NumberColumn("わっしょい%"),
-        
-        # ファイト（個数 ➔ ％）
-        "ファイト個数": st.column_config.NumberColumn("ファイト個数"),
-        "ファイト%": st.column_config.NumberColumn("ファイト%"),
+        "確定済みイベラス%": st.column_config.NumberColumn("確定%"),
         
         # ナイト各種
         "メガ総数": st.column_config.NumberColumn("メガ総数"),
@@ -168,7 +150,13 @@ edited = st.data_editor(
         "ベビ総数": st.column_config.NumberColumn("ベビ総数"),
         "ベビ既投": st.column_config.NumberColumn("ベビ既投"),
         
-        "確定済みイベラス%": st.column_config.NumberColumn("確定%"),
+        # 特有アイテム
+        "ゴーゴー個数": st.column_config.NumberColumn("ゴーゴー個数"),
+        "GOGO%": st.column_config.NumberColumn("GOGO%"),
+        "わっしょい個数": st.column_config.NumberColumn("わっしょい個数"),
+        "わっしょい%": st.column_config.NumberColumn("わっしょい%"),
+        "ファイト個数": st.column_config.NumberColumn("ファイト個数"),
+        "ファイト%": st.column_config.NumberColumn("ファイト%"),
     }
 )
 
@@ -187,7 +175,6 @@ for _, row in df.iterrows():
 if myself is None and len(df) > 0:
     myself = df.iloc[0]
 
-# 自分（荒沢）の残り個数の計算
 my_rem = {}
 my_predicted = 0
 if myself is not None:
@@ -197,7 +184,6 @@ if myself is not None:
         + safe_num(myself.get("わっしょい%"))
         + safe_num(myself.get("ファイト%"))
     )
-    # 各個数の救出
     my_rem["ゴーゴー"] = safe_num(myself.get("ゴーゴー個数"), True)
     my_rem["わっしょい"] = safe_num(myself.get("わっしょい個数"), True)
     my_rem["ファイト"] = safe_num(myself.get("ファイト個数"), True)
@@ -257,3 +243,5 @@ if not res_df.empty:
     res_df = res_df.sort_values(by="予想最終ポイント", ascending=False)
 
 st.dataframe(res_df, use_container_width=True)
+
+```
