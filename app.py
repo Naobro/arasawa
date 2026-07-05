@@ -199,7 +199,6 @@ edited = st.data_editor(
     key="rival_editor",
 )
 
-st.session_state.rival_df = edited
 
 # ========== ⑤ 計算 ==========
 st.markdown("### ③ 計算結果（予想最終ポイント）")
