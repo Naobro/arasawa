@@ -1,22 +1,18 @@
-なるほど！ただ最終ポイントを出すだけじゃなくて、「ライバルと比べてあと何個アイテムの差があるのか」「その残りアイテムにボーナスが乗ると、結局何ポイントになるのか」をひと目で比較したいということですね。
+あちゃ、またまた私のセリフがコードと一緒に `app.py` の中に入っちゃっていますね！😂
 
-ご要望通り、計算結果のテーブル（③ 計算結果）に以下の項目を新しく追加しました！
+Pythonのファイル（`.py`）は、**黒い枠の中のプログラムだけ**が書かれている状態にしないとエラーになってしまいます。
 
-### ✨ 新しく追加した機能
+今度こそバッチリ動かすために、次の手順で貼り付け直してみてください。
 
-* **残りアイテムPt（ボ込）**: そのライバーが持っている残りアイテムに、それぞれのボーナス%を掛け合わせた「純粋なアイテムの総ポイント」です。
-* **荒沢との総Pt差**: 最終予想ポイントが、あなた（荒沢）と何ポイント差あるかを表示します（プラスならあなたがリード、マイナスならライバルがリード）。
-* **各アイテムの個数差（メガ差、ぽこ差など）**: 「あなたの残り個数 － ライバルの残り個数」を自動計算します。
-* **`+2`** の場合：あなたがライバルより**2個多く持っている**（有利！）
-* **`-3`** の場合：ライバルの方が**3個多く持っている**（あと3個追いつく必要がある！）
+### 🛠️ 正しい貼り付け手順
 
-
+1. `app.py` の中身を、一度すべて選択してデリートキーで完全に消し、真っ白（空っぽ）にしてください。
+2. 下の黒い枠の右上にある **「Copy」ボタン** をクリックします。
+3. 空っぽになった `app.py` に貼り付けて、保存（Ctrl + S）してください。
 
 ---
 
-### 📋 修正済み全コード
-
-`app.py` の中身を一度すべて消してから、以下のコードをそのまま貼り付けて保存してください。
+### 📋 `app.py` に入れる中身（これだけをコピー）
 
 ```python
 import streamlit as st
@@ -144,7 +140,6 @@ if not edited.equals(st.session_state.rival_df):
 df = edited
 night_keys = ["ゴーゴー", "わっしょい", "ファイト", "メガ", "ぽこ", "ミニ", "プチ", "ベビ"]
 
-# --- 基準となる「自分（荒沢）」のデータを最初に見つける ---
 myself = None
 for _, row in df.iterrows():
     if safe_bool(row.get("自分")):
@@ -153,7 +148,6 @@ for _, row in df.iterrows():
 if myself is None and len(df) > 0:
     myself = df.iloc[0]
 
-# 自分の残りアイテム数を計算しておく
 my_rem = {}
 my_predicted = 0
 if myself is not None:
@@ -169,7 +163,6 @@ if myself is not None:
     my_current = safe_num(myself.get("現在ポイント"), True)
     my_predicted = my_current + my_night_pt * (1 + my_bonus / 100)
 
-# --- 全員の計算と差分の算出 ---
 results = []
 for _, row in df.iterrows():
     bonus = (
@@ -186,12 +179,9 @@ for _, row in df.iterrows():
     night_pt = sum(rem[k] * prices[k] for k in night_keys)
     current = safe_num(row.get("現在ポイント"), True)
     
-    # アイテムのボーナスポイント（残りアイテムPt × ボーナス倍率）
     item_bonus_pt = night_pt * (1 + bonus / 100)
     predicted = current + item_bonus_pt
 
-    # 自分とのアイテム個数差を計算（自分 - ライバル）
-    # プラスなら自分が多く持っている、マイナスなら相手が多く持っている
     is_me = safe_bool(row.get("自分"))
     pt_diff = int(my_predicted - predicted) if not is_me else 0
 
@@ -214,7 +204,6 @@ st.caption("※「〇〇差」は【あなたの残り個数 － ライバルの
 res_df = pd.DataFrame(results)
 
 if not res_df.empty:
-    # 予想最終ポイントが高い順に並び替え
     res_df = res_df.sort_values(by="予想最終ポイント", ascending=False)
 
 st.dataframe(res_df, use_container_width=True)
