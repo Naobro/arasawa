@@ -1,3 +1,5 @@
+
+
 import streamlit as st
 import pandas as pd
 import unicodedata
@@ -42,23 +44,31 @@ if "prices" not in st.session_state:
 
 prices = st.session_state.prices
 
+# ご希望の「個数 ➔ ポイント（％）」の順に合わせて初期データの並びを変更
 def make_row(is_self, name):
     return {
         "自分": is_self,
         "ライバー名": name,
         "現在ポイント": 0,
-        "確定済みイベラス%": 0.0,
-        "GOGO%": 0.0,
-        "わっしょい%": 0.0,
-        "ファイト%": 0.0,
-        "ゴーゴー総数": 0, "ゴーゴー既投": 0,
-        "わっしょい総数": 0, "わっしょい既投": 0,
-        "ファイト総数": 0, "ファイト既投": 0,
+        
+        # --- ゴーゴー ---
+        "ゴーゴー総数": 0, "ゴーゴー既投": 0, "GOGO%": 0.0,
+        
+        # --- わっしょい ---
+        "わっしょい総数": 0, "わっしょい既投": 0, "わっしょい%": 0.0,
+        
+        # --- ファイト ---
+        "ファイト総数": 0, "ファイト既投": 0, "ファイト%": 0.0,
+        
+        # --- ナイト各種 ---
         "メガ総数": 0, "メガ既投": 0,
         "ぽこ総数": 0, "ぽこ既投": 0,
         "ミニ総数": 0, "ミニ既投": 0,
         "プチ総数": 0, "プチ既投": 0,
         "ベビ総数": 0, "ベビ既投": 0,
+        
+        # --- イベラス確定分 ---
+        "確定済みイベラス%": 0.0,
     }
 
 CSV_FILE = "rival_data.csv"
@@ -68,9 +78,12 @@ if "rival_df" not in st.session_state:
         try:
             loaded_df = pd.read_csv(CSV_FILE)
             base_row = make_row(True, "dummy")
+            # 新しい列順で並び替えて保持
             for col in base_row.keys():
                 if col not in loaded_df.columns:
                     loaded_df[col] = base_row[col]
+            # 列の順番を強制的に並び替え
+            loaded_df = loaded_df[list(base_row.keys())]
             st.session_state.rival_df = loaded_df
         except:
             st.session_state.rival_df = pd.DataFrame(
@@ -83,6 +96,7 @@ if "rival_df" not in st.session_state:
 
 st.markdown("### ② 入力")
 
+# 表示する順番を「個数 ➔ ポイント（％）」に完全統一
 edited = st.data_editor(
     st.session_state.rival_df,
     num_rows="dynamic",
@@ -92,16 +106,23 @@ edited = st.data_editor(
         "自分": st.column_config.CheckboxColumn("自分"),
         "ライバー名": st.column_config.TextColumn("ライバー名"),
         "現在ポイント": st.column_config.NumberColumn("現在ポイント"),
-        "確定済みイベラス%": st.column_config.NumberColumn("確定%"),
-        "GOGO%": st.column_config.NumberColumn("GOGO%"),
-        "わっしょい%": st.column_config.NumberColumn("わっしょい%"),
-        "ファイト%": st.column_config.NumberColumn("ファイト%"),
+        
+        # ゴーゴー
         "ゴーゴー総数": st.column_config.NumberColumn("ゴーゴー総数"),
         "ゴーゴー既投": st.column_config.NumberColumn("ゴーゴー既投"),
+        "GOGO%": st.column_config.NumberColumn("GOGO%"),
+        
+        # わっしょい
         "わっしょい総数": st.column_config.NumberColumn("わっしょい総数"),
         "わっしょい既投": st.column_config.NumberColumn("わっしょい既投"),
+        "わっしょい%": st.column_config.NumberColumn("わっしょい%"),
+        
+        # ファイト
         "ファイト総数": st.column_config.NumberColumn("ファイト総数"),
         "ファイト既投": st.column_config.NumberColumn("ファイト既投"),
+        "ファイト%": st.column_config.NumberColumn("ファイト%"),
+        
+        # ナイトアイテム
         "メガ総数": st.column_config.NumberColumn("メガ総数"),
         "メガ既投": st.column_config.NumberColumn("メガ既投"),
         "ぽこ総数": st.column_config.NumberColumn("ぽこ総数"),
@@ -112,6 +133,9 @@ edited = st.data_editor(
         "プチ既投": st.column_config.NumberColumn("プチ既投"),
         "ベビ総数": st.column_config.NumberColumn("ベビ総数"),
         "ベビ既投": st.column_config.NumberColumn("ベビ既投"),
+        
+        # 確定%
+        "確定済みイベラス%": st.column_config.NumberColumn("確定%"),
     }
 )
 
