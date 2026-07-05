@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 import pandas as pd
 import unicodedata
@@ -5,6 +6,7 @@ import os
 
 st.set_page_config(page_title="Pococha甲子園 予想最終ポイント計算", layout="wide")
 st.title("🏆 Pococha甲子園｜荒沢 予想最終ポイント計算ツール")
+
 
 def safe_num(val, as_int=False):
     if val is None:
@@ -22,18 +24,26 @@ def safe_num(val, as_int=False):
     except:
         return 0
 
+
 def safe_name(val):
     return "" if val is None else str(val)
+
 
 def safe_bool(val):
     return bool(val) if val is not None else False
 
+
 if "prices" not in st.session_state:
     st.session_state.prices = {
-        "メガ": 55555, "ぽこ": 11111, "ミニ": 3333, "プチ": 1111, "ベビ": 333
+        "メガ": 55555,
+        "ぽこ": 11111,
+        "ミニ": 3333,
+        "プチ": 1111,
+        "ベビ": 333,
     }
 
 prices = st.session_state.prices
+
 
 def make_row(is_self, name):
     return {
@@ -56,6 +66,7 @@ def make_row(is_self, name):
         "ベビ既投": 0,
     }
 
+
 CSV_FILE = "rival_data.csv"
 
 if "rival_df" not in st.session_state:
@@ -63,15 +74,26 @@ if "rival_df" not in st.session_state:
         st.session_state.rival_df = pd.read_csv(CSV_FILE)
     else:
         st.session_state.rival_df = pd.DataFrame(
-            [make_row(True, "荒沢")] + [make_row(False, f"ライバル{i}") for i in range(1, 6)]
+            [make_row(True, "荒沢")]
+            + [make_row(False, f"ライバル{i}") for i in range(1, 6)]
         )
+
 
 st.markdown("### ② 入力")
 
+
 def save_csv():
-    df = st.session_state["rival_editor"]
-    st.session_state.rival_df = df.copy()
-    df.to_csv(CSV_FILE, index=False)
+    df = st.session_state.get("rival_editor")
+
+    if df is None:
+        return
+
+    try:
+        df.to_csv(CSV_FILE, index=False)
+        st.session_state.rival_df = df.copy()
+    except:
+        pass
+
 
 edited = st.data_editor(
     st.session_state.rival_df,
@@ -97,16 +119,17 @@ edited = st.data_editor(
         "プチ既投": st.column_config.NumberColumn("プチ既投"),
         "ベビ総数": st.column_config.NumberColumn("ベビ総数"),
         "ベビ既投": st.column_config.NumberColumn("ベビ既投"),
-    }
+    },
 )
 
+
 df = edited
+
 
 night_keys = ["メガ", "ぽこ", "ミニ", "プチ", "ベビ"]
 results = []
 
 for _, row in df.iterrows():
-
     bonus = (
         safe_num(row.get("確定済みイベラス%"))
         + safe_num(row.get("GOGO%"))
@@ -126,9 +149,13 @@ for _, row in df.iterrows():
     current = safe_num(row.get("現在ポイント"), True)
     predicted = current + night_pt * (1 + bonus / 100)
 
-    results.append({
-        "ライバー名": safe_name(row.get("ライバー名")),
-        "予想最終ポイント": int(predicted),
-    })
+    results.append(
+        {
+            "ライバー名": safe_name(row.get("ライバー名")),
+            "現在ポイント": current,
+            "予想最終": int(predicted),
+        }
+    )
 
 st.dataframe(pd.DataFrame(results), use_container_width=True)
+```
