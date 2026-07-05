@@ -30,6 +30,7 @@ def safe_name(val):
 def safe_bool(val):
     return bool(val) if val is not None else False
 
+# アイテム単価（ゴーゴー、わっしょいの単価ポイントが必要な場合はここで変更してください）
 if "prices" not in st.session_state:
     st.session_state.prices = {
         "ゴーゴー": 0,      
@@ -44,12 +45,14 @@ if "prices" not in st.session_state:
 
 prices = st.session_state.prices
 
-# 表示させたい絶対的な列の順番を定義
+# ご指定のあった「個数 ➔ ％」の完全な並び順
 COLUMN_ORDER = [
     "自分", "ライバー名", "現在ポイント",
+    
     "ゴーゴー総数", "ゴーゴー既投", "GOGO%",
     "わっしょい総数", "わっしょい既投", "わっしょい%",
     "ファイト総数", "ファイト既投", "ファイト%",
+    
     "メガ総数", "メガ既投",
     "ぽこ総数", "ぽこ既投",
     "ミニ総数", "ミニ既投",
@@ -63,9 +66,11 @@ def make_row(is_self, name):
         "自分": is_self,
         "ライバー名": name,
         "現在ポイント": 0,
+        
         "ゴーゴー総数": 0, "ゴーゴー既投": 0, "GOGO%": 0.0,
         "わっしょい総数": 0, "わっしょい既投": 0, "わっしょい%": 0.0,
         "ファイト総数": 0, "ファイト既投": 0, "ファイト%": 0.0,
+        
         "メガ総数": 0, "メガ既投": 0,
         "ぽこ総数": 0, "ぽこ既投": 0,
         "ミニ総数": 0, "ミニ既投": 0,
@@ -81,13 +86,11 @@ if "rival_df" not in st.session_state:
         try:
             loaded_df = pd.read_csv(CSV_FILE)
             base_row = make_row(True, "dummy")
-            # 足りない列があれば補完
+            # 不足している列（ゴーゴー総数など）があれば自動補完
             for col in base_row.keys():
                 if col not in loaded_df.columns:
                     loaded_df[col] = base_row[col]
-            # ➔ ➔ ➔ 【最重要】ここで強制的に「個数 ➔ ポイント」の順番に並び替える ➔ ➔ ➔
-            loaded_df = loaded_df[COLUMN_ORDER]
-            st.session_state.rival_df = loaded_df
+            st.session_state.rival_df = loaded_df[COLUMN_ORDER]
         except:
             st.session_state.rival_df = pd.DataFrame(
                 [make_row(True, "荒沢")] + [make_row(False, f"ライバル{i}") for i in range(1, 6)]
@@ -99,9 +102,8 @@ if "rival_df" not in st.session_state:
 
 st.markdown("### ② 入力")
 
-# 画面表示用の設定。並び順が固定されるようにCOLUMN_ORDERに沿って適用
 edited = st.data_editor(
-    st.session_state.rival_df[COLUMN_ORDER],  # 常に正しい列順でエディタに渡す
+    st.session_state.rival_df[COLUMN_ORDER],
     num_rows="dynamic",
     use_container_width=True,
     key="rival_editor",
@@ -110,22 +112,22 @@ edited = st.data_editor(
         "ライバー名": st.column_config.TextColumn("ライバー名"),
         "現在ポイント": st.column_config.NumberColumn("現在ポイント"),
         
-        # ゴーゴー
+        # ゴーゴー（個数 ➔ ％）
         "ゴーゴー総数": st.column_config.NumberColumn("ゴーゴー総数"),
         "ゴーゴー既投": st.column_config.NumberColumn("ゴーゴー既投"),
         "GOGO%": st.column_config.NumberColumn("GOGO%"),
         
-        # わっしょい
+        # わっしょい（個数 ➔ ％）
         "わっしょい総数": st.column_config.NumberColumn("わっしょい総数"),
         "わっしょい既投": st.column_config.NumberColumn("わっしょい既投"),
         "わっしょい%": st.column_config.NumberColumn("わっしょい%"),
         
-        # ファイト
+        # ファイト（個数 ➔ ％）
         "ファイト総数": st.column_config.NumberColumn("ファイト総数"),
         "ファイト既投": st.column_config.NumberColumn("ファイト既投"),
         "ファイト%": st.column_config.NumberColumn("ファイト%"),
         
-        # ナイト
+        # ナイト各種
         "メガ総数": st.column_config.NumberColumn("メガ総数"),
         "メガ既投": st.column_config.NumberColumn("メガ既投"),
         "ぽこ総数": st.column_config.NumberColumn("ぽこ総数"),
@@ -147,7 +149,8 @@ if not edited.equals(st.session_state.rival_df):
     st.rerun()
 
 df = edited
-night_keys = ["ゴーゴー", "わっしょい", "ファイト", "メガ", "ぽこ", "ミニ", "プチ", "ベビ"]
+# 個数計算をする全アイテムのキー
+all_keys = ["ゴーゴー", "わっしょい", "ファイト", "メガ", "ぽこ", "ミニ", "プチ", "ベビ"]
 
 myself = None
 for _, row in df.iterrows():
@@ -166,11 +169,11 @@ if myself is not None:
         + safe_num(myself.get("わっしょい%"))
         + safe_num(myself.get("ファイト%"))
     )
-    for k in night_keys:
+    for k in all_keys:
         my_rem[k] = max(0, safe_num(myself.get(f"{k}総数"), True) - safe_num(myself.get(f"{k}既投"), True))
-    my_night_pt = sum(my_rem[k] * prices[k] for k in night_keys)
+    my_item_pt = sum(my_rem[k] * prices[k] for k in all_keys)
     my_current = safe_num(myself.get("現在ポイント"), True)
-    my_predicted = my_current + my_night_pt * (1 + my_bonus / 100)
+    my_predicted = my_current + my_item_pt * (1 + my_bonus / 100)
 
 results = []
 for _, row in df.iterrows():
@@ -182,13 +185,13 @@ for _, row in df.iterrows():
     )
 
     rem = {}
-    for k in night_keys:
+    for k in all_keys:
         rem[k] = max(0, safe_num(row.get(f"{k}総数"), True) - safe_num(row.get(f"{k}既投"), True))
 
-    night_pt = sum(rem[k] * prices[k] for k in night_keys)
+    item_pt = sum(rem[k] * prices[k] for k in all_keys)
     current = safe_num(row.get("現在ポイント"), True)
     
-    item_bonus_pt = night_pt * (1 + bonus / 100)
+    item_bonus_pt = item_pt * (1 + bonus / 100)
     predicted = current + item_bonus_pt
 
     is_me = safe_bool(row.get("自分"))
@@ -200,12 +203,14 @@ for _, row in df.iterrows():
         "予想最終ポイント": int(predicted),
         "荒沢との総Pt差": pt_diff,
         "残りアイテムPt(ボ込)": int(item_bonus_pt),
+        "ゴーゴー差": my_rem.get("ゴーゴー", 0) - rem["ゴーゴー"],
+        "わっしょい差": my_rem.get("わっしょい", 0) - rem["わっしょい"],
+        "ファイト差": my_rem.get("ファイト", 0) - rem["ファイト"],
         "メガ差": my_rem.get("メガ", 0) - rem["メガ"],
         "ぽこ差": my_rem.get("ぽこ", 0) - rem["ぽこ"],
         "ミニ差": my_rem.get("ミニ", 0) - rem["ミニ"],
         "プチ差": my_rem.get("プチ", 0) - rem["プチ"],
         "ベビ差": my_rem.get("ベビ", 0) - rem["ベビ"],
-        "ファイト差": my_rem.get("ファイト", 0) - rem["ファイト"],
     })
 
 st.markdown("### ③ 計算結果")
